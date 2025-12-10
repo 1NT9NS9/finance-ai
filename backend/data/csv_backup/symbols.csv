@@ -1,0 +1,18 @@
+id,symbol,name,source,sector,currency,created_at,updated_at
+52,IMOEX,Moscow Exchange Index,unknown,Index,RUB,2025-08-15 01:18:51,2025-08-15 01:18:51
+53,RTGZ,Rosneft Oil Company,unknown,Oil and Gas,RUB,2025-08-15 01:18:51,2025-08-15 01:18:51
+54,MRKV,IDGC of Volga,unknown,Electric Power,RUB,2025-08-15 01:18:51,2025-08-15 01:18:51
+55,MRKC,IDGC of Centre,unknown,Electric Power,RUB,2025-08-15 01:18:51,2025-08-15 01:18:51
+56,KRSB,Krasnoyarskenergo,unknown,Electric Power,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+57,MTSS,Mobile TeleSystems,unknown,Telecom,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+58,PLZL,Polyus Gold,unknown,Metallurgy and Mining,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+59,LENT,Lenta Ltd,unknown,Consumer,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+60,SBER,Sberbank of Russia,unknown,Finance,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+61,T,TCS Group Holding,unknown,Finance,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+62,OZON,Ozon Holdings,unknown,IT,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+63,YDEX,Yandex N.V.,unknown,IT,RUB,2025-08-15 01:18:52,2025-08-15 01:18:52
+64,BTC-USD,Bitcoin,unknown,Cryptocurrency,USD,2025-08-15 01:18:52,2025-08-15 01:18:52
+65,ETH-USD,Ethereum,unknown,Cryptocurrency,USD,2025-08-15 01:18:52,2025-08-15 01:18:52
+66,SOL-USD,Solana,unknown,Cryptocurrency,USD,2025-08-15 01:18:52,2025-08-15 01:18:52
+67,XAUT-USD,Gold,unknown,Precious Metals,USD,2025-08-15 01:18:52,2025-08-15 01:18:52
+68,^SPX,S&P 500,unknown,Index,USD,2025-08-15 01:18:52,2025-08-15 01:18:52

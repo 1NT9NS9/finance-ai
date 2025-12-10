@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Создать портфель</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"
+        crossorigin="anonymous"></script>
+    <script src="environment.js?v=2.5"></script>
+    <script src="auth-utils.js?v=2.5"></script>
+    <script src="modules.js?v=2.5"></script>
+    <script src="config.js?v=2.5"></script>
+    <script src="gemini-api.js?v=2.5"></script>
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #chat-wrapper {
+            display: flex;
+            height: 100%;
+            background-color: #131314;
+            color: #e8eaed;
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+        }
+
+        /* Sidebar */
+        #history-panel {
+            width: 260px;
+            border-right: 1px solid #3c4043;
+            display: flex;
+            flex-direction: column;
+            background-color: #1f1f1f;
+        }
+
+        #history-messages {
+            flex: 1 1 auto;
+            padding: 12px;
+            overflow-y: auto;
+        }
+
+        #history-panel h3 {
+            text-align: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        #settings {
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            border-top: 1px solid #333;
+        }
+
+        #settings i {
+            margin-right: 6px;
+        }
+
+        /* Main chat */
+        #chat-main {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 0 16px 16px;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            /* Hide default scrollbar */
+        }
+
+        #messages {
+            flex: 1 1 auto;
+            overflow-y: scroll;
+            margin-bottom: 12px;
+            width: 100%;
+            max-width: 600px;
+            padding: 12px 12px 12px 12px;
+            /* Hide default scrollbar and extend to full height */
+            scrollbar-width: none;
+            /* Firefox */
+            -ms-overflow-style: none;
+            /* Internet Explorer 10+ */
+            position: relative;
+            height: 100%;
+        }
+
+        /* Hide default webkit scrollbar */
+        #messages::-webkit-scrollbar {
+            display: none;
+        }
+
+        #popup-menus {
+            margin-bottom: 12px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .popup-step {
+            margin-bottom: 12px;
+        }
+
+        .popup-step h4 {
+            margin-bottom: 8px;
+        }
+
+        .popup-step button {
+            margin: 4px 6px 4px 0;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #333;
+            color: #fff;
+            transition: background-color .2s;
+        }
+
+        .popup-step button:hover {
+            background-color: #555;
+        }
+
+        /* Input */
+        #chat-input {
+            display: flex;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 12px;
+            position: relative;
+        }
+
+        #chat-input input {
+            flex: 1 1 auto;
+            padding: 24px 60px 24px 20px;
+            /* Extra padding on right for button */
+            height: 24px;
+            /* Double the height */
+            border-radius: 24px;
+            border: 2px solid #8b5cf6;
+            /* Purple border */
+            background-color: #6b46c1;
+            /* Purple background */
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        #chat-input input:focus {
+            border-color: #a855f7;
+            /* Lighter purple on focus */
+            background-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        #chat-input input::placeholder {
+            color: #e0e7ff;
+            opacity: 0.7;
+        }
+
+        #chat-input button {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px;
+            background-color: #a855f7;
+            /* Purple button */
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+
+        #chat-input button:hover {
+            background-color: #9333ea;
+        }
+
+        #chat-input button:active {
+            background-color: #7c2d12;
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        /* Messages styling */
+        .msg {
+            margin: 16px 0;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        /* User messages - gray background, aligned right, only around text */
+        .msg.user {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+
+        .msg.user::after {
+            content: attr(data-text);
+            background-color: #2f2f2f;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 18px;
+            border-bottom-right-radius: 4px;
+            max-width: 80%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        /* Bot messages - no frame, centered, clean appearance */
+        .msg.bot {
+            background-color: transparent;
+            color: #e3e3e3;
+            margin: 16px 0;
+            text-align: center;
+            /* Changed from left to center */
+            padding: 0;
+            border: none;
+            max-width: 100%;
+            line-height: 1.6;
+        }
+
+        /* Custom scrollbar positioned at right edge of entire screen */
+        .custom-scrollbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 6px;
+            /* Reduced width from 12px to 6px */
+            height: 100vh;
+            background: #1a1a1a;
+            z-index: 1000;
+            pointer-events: none;
+            /* Allow clicks to pass through track */
+        }
+
+        .custom-scrollbar-thumb {
+            position: absolute;
+            right: 0;
+            width: 6px;
+            /* Reduced width from 12px to 6px */
+            background: #404040;
+            /* Dark gray to match chat theme */
+            border-radius: 3px;
+            /* Reduced border radius proportionally */
+            cursor: pointer;
+            pointer-events: all;
+            /* Enable clicks on thumb */
+            transition: background-color 0.2s ease;
+            min-height: 20px;
+        }
+
+        .custom-scrollbar-thumb:hover {
+            background: #555555;
+            /* Slightly lighter on hover */
+        }
+
+        .custom-scrollbar-thumb:active {
+            background: #666666;
+            /* Even lighter when dragging */
+        }
+
+        /* Ensure main container extends to full width */
+        #container {
+            padding-right: 0;
+        }
+
+        /* Make chat extend to right edge */
+        #chat-main {
+            padding-right: 0;
+            margin-right: 0;
+        }
+
+        /* Typing indicator should not be saved to chat history */
+
+        /* Active chat folder styling */
+        .folder-item.active {
+            background-color: #333 !important;
+            border-left: 3px solid #8b5cf6;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Custom scrollbar for right edge of screen -->
+    <div class="custom-scrollbar">
+        <div class="custom-scrollbar-thumb"></div>
+    </div>
+
+    <div id="chat-wrapper">
+        <aside id="history-panel">
+            <h3 id="history-heading">История</h3>
+            <div id="new-chat" class="menu-item"><i class="fa-regular fa-pen-to-square"></i><span>Новый чат</span></div>
+            <div id="folder-list"></div>
+            <div id="settings"><i class="fa-solid fa-gear"></i></div>
+        </aside>
+        <section id="chat-main">
+            <div id="messages"></div>
+            <div style="max-width: 600px; width: 100%;">
+                <button id="toggle-menu" class="triangle-btn"><i class="fa-solid fa-caret-up"></i></button>
+            </div>
+            <div id="popup-menus"></div>
+            <div id="chat-input">
+                <input type="text" id="user-input" placeholder="Введите сообщение..." />
+                <button id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </section>
+    </div>
+    <!-- Paywall overlay -->
+    <div id="paywall" class="paywall-overlay">
+        <div class="paywall-box">
+            <span id="close-paywall" class="close">&times;</span>
+            <h2 style="display:flex;align-items:center;justify-content:center;gap:8px;">Подписка <i
+                    class="fa-solid fa-hourglass-half hourglass-spin"></i></h2>
+            <p>Получите доступ к эксклюзивной информации!</p>
+            <button id="buy-btn" class="btn green"
+                onclick="window.open('subscription.html','_blank')">Продолжить</button>
+        </div>
+    </div>
+
+    <style>
+        @keyframes shake {
+            0% {
+                transform: translateX(-3px);
+            }
+
+            100% {
+                transform: translateX(3px);
+            }
+        }
+    </style>
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const folderList = document.getElementById('folder-list');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const popupHolder = document.getElementById('popup-menus');
+
+        // Delegated handler for options button in case events not attached
+        folderList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.options-btn');
+            if (btn) { e.stopPropagation(); const folder = btn.closest('.folder-item'); if (folder) showFolderMenu(folder); }
+        });
+
+        // Chat session management with user-specific history
+        let chats = [{ name: 'Чат 1', messages: [] }];
+        let currentChat = 0;
+
+        // User-specific chat history management
+        class ChatHistoryManager {
+            static getUserId() {
+                return AuthManager.getUserEmail() || 'guest';
+            }
+
+            static isRegisteredUser() {
+                return AuthManager.isLoggedIn() && AuthManager.getUserEmail();
+            }
+
+            static getUserChatKey() {
+                return `chatHistory_${this.getUserId()}`;
+            }
+
+            static getCurrentChatKey() {
+                return `currentChat_${this.getUserId()}`;
+            }
+
+            static saveCurrentChat(chatIndex) {
+                if (this.isRegisteredUser()) {
+                    localStorage.setItem(this.getCurrentChatKey(), chatIndex.toString());
+                }
+            }
+
+            static loadCurrentChat() {
+                if (!this.isRegisteredUser()) {
+                    return 0; // Always start with first chat for guests
+                }
+
+                const saved = localStorage.getItem(this.getCurrentChatKey());
+                return saved ? parseInt(saved) : 0;
+            }
+
+            static loadUserChats() {
+                const userId = this.getUserId();
+
+                // For unregistered users, don't load saved chats
+                if (!this.isRegisteredUser()) {
+                    console.log('Guest user - using temporary chat without saving');
+                    return [{
+                        name: 'Чат 1',
+                        messages: [],
+                        createdAt: new Date().toISOString(),
+                        menuState: {
+                            currentStep: 0,
+                            answers: {},
+                            isCompleted: false
+                        }
+                    }];
+                }
+
+                const savedChats = localStorage.getItem(this.getUserChatKey());
+
+                if (savedChats) {
+                    try {
+                        const parsedChats = JSON.parse(savedChats);
+                        console.log(`Loaded ${parsedChats.length} chats for registered user: ${userId}`);
+                        return parsedChats;
+                    } catch (error) {
+                        console.error('Failed to load user chats:', error);
+                    }
+                }
+
+                // Default chat for new registered users
+                console.log(`Creating new chat history for registered user: ${userId}`);
+                return [{
+                    name: 'Чат 1',
+                    messages: [],
+                    createdAt: new Date().toISOString(),
+                    menuState: {
+                        currentStep: 0,
+                        answers: {},
+                        isCompleted: false
+                    }
+                }];
+            }
+
+            static saveUserChats() {
+                // Only save chats for registered users
+                if (!this.isRegisteredUser()) {
+                    console.log('Guest user - chat history not saved');
+                    return;
+                }
+
+                const userId = this.getUserId();
+                try {
+                    // Add timestamps to chats if not present
+                    const chatsToSave = chats.map(chat => ({
+                        ...chat,
+                        lastUpdated: new Date().toISOString(),
+                        createdAt: chat.createdAt || new Date().toISOString()
+                    }));
+
+                    localStorage.setItem(this.getUserChatKey(), JSON.stringify(chatsToSave));
+                    console.log(`Saved ${chatsToSave.length} chats for registered user: ${userId}`);
+                } catch (error) {
+                    console.error('Failed to save user chats:', error);
+                }
+            }
+
+            static initializeUserChats() {
+                chats = this.loadUserChats();
+
+                // Restore the last active chat
+                const savedCurrentChat = this.loadCurrentChat();
+                currentChat = Math.min(savedCurrentChat, chats.length - 1); // Ensure index is valid
+
+                console.log('Initialized chat history:', chats);
+                console.log(`Restored active chat: ${currentChat} (was ${savedCurrentChat})`);
+            }
+
+
+
+            static createNewChat() {
+                // Prevent new chat creation for unregistered users
+                if (!this.isRegisteredUser()) {
+                    alert('Для создания новых чатов необходимо войти в аккаунт');
+                    return -1;
+                }
+
+                const newChatNumber = chats.length + 1;
+                const newChat = {
+                    name: `Чат ${newChatNumber}`,
+                    messages: [],
+                    createdAt: new Date().toISOString(),
+                    menuState: {
+                        currentStep: 0,
+                        answers: {},
+                        isCompleted: false
+                    }
+                };
+
+                chats.push(newChat);
+                this.saveUserChats();
+
+                // Ensure a clean conversation history for the newly created chat index
+                const newChatIndex = chats.length - 1;
+                ConversationManager.clearHistory(newChatIndex);
+                return newChatIndex;
+            }
+
+            static deleteChat(chatIndex) {
+                // Prevent chat deletion for unregistered users
+                if (!this.isRegisteredUser()) {
+                    alert('Для удаления чатов необходимо войти в аккаунт');
+                    return false;
+                }
+
+                if (chats.length > 1 && chatIndex >= 0 && chatIndex < chats.length) {
+                    // Clear stored conversation history for this chat before removing
+                    ConversationManager.clearHistory(chatIndex);
+                    chats.splice(chatIndex, 1);
+
+                    // Adjust current chat if necessary
+                    if (currentChat >= chats.length) {
+                        currentChat = chats.length - 1;
+                    } else if (currentChat > chatIndex) {
+                        currentChat--;
+                    }
+
+                    this.saveUserChats();
+                    return true;
+                }
+                return false;
+            }
+
+            static renameChat(chatIndex, newName) {
+                // Prevent chat renaming for unregistered users
+                if (!this.isRegisteredUser()) {
+                    alert('Для переименования чатов необходимо войти в аккаунт');
+                    return false;
+                }
+
+                if (chatIndex >= 0 && chatIndex < chats.length) {
+                    chats[chatIndex].name = newName;
+                    this.saveUserChats();
+                    return true;
+                }
+                return false;
+            }
+
+            static clearUserHistory() {
+                const userId = this.getUserId();
+                localStorage.removeItem(this.getUserChatKey());
+                console.log(`Cleared chat history for user: ${userId}`);
+            }
+
+            static exportUserHistory() {
+                const userId = this.getUserId();
+                const chatData = {
+                    userId: userId,
+                    exportDate: new Date().toISOString(),
+                    chats: chats
+                };
+                return JSON.stringify(chatData, null, 2);
+            }
+
+            static getHistoryStats() {
+                const userId = this.getUserId();
+                const totalChats = chats.length;
+                const totalMessages = chats.reduce((sum, chat) => sum + chat.messages.length, 0);
+                const oldestChat = chats.reduce((oldest, chat) => {
+                    const chatDate = new Date(chat.createdAt || '');
+                    return (!oldest || chatDate < new Date(oldest.createdAt || '')) ? chat : oldest;
+                }, null);
+
+                return {
+                    userId,
+                    totalChats,
+                    totalMessages,
+                    oldestChatDate: oldestChat?.createdAt || null
+                };
+            }
+        }
+
+        function renderMessages() {
+            messagesDiv.innerHTML = '';
+            chats[currentChat].messages.forEach(m => {
+                const div = document.createElement('div');
+                div.classList.add('msg', m.sender);
+
+                if (m.sender === 'user') {
+                    // For user messages, use data-text attribute for styling
+                    div.setAttribute('data-text', m.text);
+                } else {
+                    // For bot messages, use regular text content
+                    div.textContent = m.text;
+                }
+
+                messagesDiv.appendChild(div);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function appendMsg(text, sender = 'bot') {
+            const div = document.createElement('div');
+            div.classList.add('msg', sender);
+
+            if (sender === 'user') {
+                // For user messages, use data-text attribute for styling
+                div.setAttribute('data-text', text);
+            } else {
+                // For bot messages, use regular text content
+                div.textContent = text;
+            }
+
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            // save to session and user-specific storage
+            chats[currentChat].messages.push({
+                text,
+                sender,
+                timestamp: new Date().toISOString()
+            });
+            ChatHistoryManager.saveUserChats();
+        }
+
+        // Append a message to a specific chat by index and render only if it's the active chat
+        function appendMsgToChat(text, sender = 'bot', chatIndex) {
+            const idx = (typeof chatIndex === 'number') ? chatIndex : currentChat;
+            if (!chats[idx]) return;
+            (chats[idx].messages = chats[idx].messages || []).push({
+                text,
+                sender,
+                timestamp: new Date().toISOString()
+            });
+            ChatHistoryManager.saveUserChats();
+            if (idx === currentChat) {
+                const div = document.createElement('div');
+                div.classList.add('msg', sender);
+                if (sender === 'user') {
+                    div.setAttribute('data-text', text);
+                } else {
+                    div.textContent = text;
+                }
+                messagesDiv.appendChild(div);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+
+        function createFolderItem(name, index = null) {
+            const idx = index !== null ? index : chats.length - 1;
+            const folder = document.createElement('div');
+            folder.className = 'folder-item';
+            folder.dataset.index = idx;
+            folder.innerHTML = `<i class="fa-regular fa-folder"></i><span>${name}</span><i class="fa-solid fa-ellipsis-vertical options-btn"></i>`;
+            folder.querySelector('.options-btn').onclick = (e) => { e.stopPropagation(); showFolderMenu(folder); };
+            folder.onclick = () => switchChat(idx);
+            folderList.appendChild(folder);
+        }
+
+        function refreshFolderLabels() {
+            folderList.querySelectorAll('.folder-item').forEach((f, i) => {
+                f.dataset.index = i;
+                f.querySelector('span').textContent = chats[i].name;
+            });
+        }
+
+        function switchChat(idx) {
+            currentChat = idx;
+
+            // Save current chat for registered users
+            ChatHistoryManager.saveCurrentChat(idx);
+
+            // Update visual highlighting
+            folderList.querySelectorAll('.folder-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            const activeFolderItem = folderList.querySelector(`[data-index="${idx}"]`);
+            if (activeFolderItem) {
+                activeFolderItem.classList.add('active');
+            }
+
+            renderMessages();
+
+            // Load menu state for this chat
+            InteractiveMenuManager.loadMenuForChat(idx);
+
+            // Show interactive menu if it should be available
+            if (InteractiveMenuManager.shouldShowMenu(idx)) {
+                renderCurrentMenuStep(); // Just render, don't advance
+            } else {
+                popupHolder.innerHTML = ''; // Clear menu for completed chats
+            }
+        }
+
+        function showFolderMenu(folder) {
+            if (document.getElementById('folder-menu')) { document.getElementById('folder-menu').remove(); }
+            const menu = document.createElement('div');
+            menu.id = 'folder-menu';
+            menu.style.cssText = 'position:absolute;background:#222;color:#fff;border:1px solid #444;border-radius:6px;padding:6px;z-index:2000;';
+            menu.innerHTML = `<div class="menu-item rename">Переименовать</div><div class="menu-item delete">Удалить</div>`;
+            document.body.appendChild(menu);
+            const rect = folder.getBoundingClientRect();
+            menu.style.left = `${rect.right + 5}px`;
+            menu.style.top = `${rect.top}px`;
+
+            menu.querySelector('.rename').onclick = () => {
+                const newName = prompt('Новое имя', folder.querySelector('span').textContent);
+                if (newName) {
+                    const chatIndex = parseInt(folder.dataset.index);
+                    ChatHistoryManager.renameChat(chatIndex, newName);
+                    refreshFolderLabels();
+                }
+                menu.remove();
+            };
+
+            menu.querySelector('.delete').onclick = () => {
+                const idx = parseInt(folder.dataset.index);
+                if (ChatHistoryManager.deleteChat(idx)) {
+                    folder.remove();
+                    refreshFolderLabels();
+                    if (currentChat === idx) {
+                        currentChat = 0;
+                        ChatHistoryManager.saveCurrentChat(0); // Save the new current chat
+                        renderMessages();
+                        // Update visual highlighting
+                        folderList.querySelectorAll('.folder-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        const activeFolderItem = folderList.querySelector(`[data-index="0"]`);
+                        if (activeFolderItem) {
+                            activeFolderItem.classList.add('active');
+                        }
+                    }
+                }
+                menu.remove();
+            };
+
+            document.addEventListener('click', function handler(e) { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', handler); } });
+        }
+
+        // New chat button
+        document.getElementById('new-chat').onclick = () => {
+            const newChatIndex = ChatHistoryManager.createNewChat();
+            if (newChatIndex === -1) {
+                // Failed to create new chat (unregistered user)
+                return;
+            }
+
+            createFolderItem(chats[newChatIndex].name);
+            switchChat(newChatIndex); // This will save the current chat automatically
+            // greeting messages
+            appendMsg('Я постараюсь ответить на все ваши вопросы!', 'bot');
+            appendMsg('(Инвестиции - моя сильная сторона)', 'bot');
+        };
+
+        // Toggle interactive menu
+        const triBtn = document.getElementById('toggle-menu');
+        triBtn.onclick = () => {
+            const hidden = popupHolder.style.display === 'none';
+            popupHolder.style.display = hidden ? 'flex' : 'none';
+            triBtn.classList.toggle('down', !hidden);
+        };
+
+        function showHistoryOverlay() {
+            if (document.getElementById('hist-overlay')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'hist-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:center;z-index:1000;';
+            overlay.innerHTML = `<div style="background-color:#1b1b1b;padding:24px;max-height:80vh;width:90%;max-width:600px;overflow-y:auto;border-radius:16px;position:relative;">
+     <span style="position:absolute;top:8px;right:12px;cursor:pointer;font-size:1.2rem;" onclick="document.getElementById('hist-overlay').remove()">&times;</span>
+     ${chats[currentChat].messages.map(m => '<div>' + m.text + '</div>').join('')}
+  </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        // Paywall logic
+        const paywall = document.getElementById('paywall');
+        document.getElementById('close-paywall').onclick = () => paywall.style.display = 'none';
+        function triggerPaywall() { if (AuthManager.isAdmin()) return; paywall.style.display = 'flex'; }
+
+        /* ---------------------- Step-by-step portfolio UI ---------------------- */
+        const steps = [
+            {
+                id: 'create',
+                render: () => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'popup-step';
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Создать инвестиционный портфель';
+                    btn.onclick = () => nextStep();
+                    wrapper.appendChild(btn);
+                    return wrapper;
+                }
+            },
+            {
+                id: 'yield',
+                title: 'Укажите желаемую годовую доходность',
+                options: ['10-20%', '20-30%', '>30%']
+            },
+            {
+                id: 'risk',
+                title: 'Укажите уровень риска',
+                options: ['0-10%', '10-15%', '>15%']
+            },
+            {
+                id: 'liquidity',
+                title: 'Укажите требуемую ликвидность (ваш капитал)',
+                options: ['До 1 млн ₽', '1-2.4 млн ₽', '>2.4 млн ₽']
+            },
+            {
+                id: 'dividends',
+                title: 'Рассматриваете ли дивидендные акции?',
+                options: ['Да', 'Не важно']
+            }
+        ];
+        let currentStep = 0;
+        const answers = {};
+
+        // Per-chat interactive menu state management
+        class InteractiveMenuManager {
+            static getMenuState(chatIndex) {
+                if (!chats[chatIndex].menuState) {
+                    // Initialize menu state for this chat
+                    chats[chatIndex].menuState = {
+                        currentStep: 0,
+                        answers: {},
+                        isCompleted: false
+                    };
+                }
+                return chats[chatIndex].menuState;
+            }
+
+            static saveMenuState(chatIndex) {
+                // Save to user's chat history if registered
+                ChatHistoryManager.saveUserChats();
+            }
+
+            static shouldShowMenu(chatIndex) {
+                // All chats work the same - only show menu if not completed
+                const state = this.getMenuState(chatIndex);
+                return !state.isCompleted;
+            }
+
+
+
+            static loadMenuForChat(chatIndex) {
+                const state = this.getMenuState(chatIndex);
+                currentStep = state.currentStep;
+                Object.assign(answers, state.answers);
+            }
+
+            static saveCurrentMenuState() {
+                if (currentChat >= 0 && currentChat < chats.length) {
+                    const state = this.getMenuState(currentChat);
+                    state.currentStep = currentStep;
+                    state.answers = { ...answers };
+                    this.saveMenuState(currentChat);
+                }
+            }
+        }
+
+        // Helpers to render Portfolio 1 chart using same data logic as in main.js
+        async function loadPortfolio1Sectors() {
+            try {
+                const resp = await fetch('/api/portfolio1_asset_sectors?ts=' + Date.now(), { cache: 'no-store' });
+                if (!resp.ok) return [];
+                const j = await resp.json();
+                const palette = ['#ff6b6b', '#ffa94d', '#4d96ff'];
+                const sectorToCompanies = {};
+                (j.data || []).forEach((row) => {
+                    const sym = String(row.symbol || '').toUpperCase();
+                    const sec = String(row.sector || 'Other');
+                    if (!sectorToCompanies[sec]) sectorToCompanies[sec] = new Set();
+                    if (sym) sectorToCompanies[sec].add(sym);
+                });
+                return Object.entries(sectorToCompanies).map(([name, set], idx) => ({
+                    name,
+                    color: palette[idx % palette.length],
+                    companies: Array.from(set)
+                }));
+            } catch (_) {
+                return [];
+            }
+        }
+
+        async function computePortfolio1AnnualYieldText() {
+            try {
+                const resp = await fetch('/api/portfolio1_total_capital?ts=' + Date.now(), { cache: 'no-store' });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const json = await resp.json();
+                const rows = json.data || [];
+                if (!rows.length) return '—';
+                const base = Number(rows[0].total_capital);
+                const last = Number(rows[rows.length - 1].total_capital);
+                const start = new Date(rows[0].date + 'T00:00:00');
+                const end = new Date(rows[rows.length - 1].date + 'T00:00:00');
+                const days = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+                const cagr = Math.pow(last / base, 365 / days) - 1;
+                return `${(cagr * 100).toFixed(1)}%`;
+            } catch (_) {
+                return '—';
+            }
+        }
+
+        async function renderPortfolio1Chart(canvasId) {
+            try {
+                const [sectors, yieldText] = await Promise.all([
+                    loadPortfolio1Sectors(),
+                    computePortfolio1AnnualYieldText()
+                ]);
+                if (window.ChartModule && ChartModule.createDoughnutChart) {
+                    ChartModule.createDoughnutChart({ canvasId, sectors, yieldText });
+                    return;
+                }
+                // Fallback: draw a simple doughnut if ChartModule is unavailable
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                const values = sectors.length ? sectors.map(s => s.companies.length || 1) : [1, 1, 1];
+                const colors = sectors.length ? sectors.map(s => s.color) : ['#ff6b6b', '#ffa94d', '#4d96ff'];
+                new Chart(ctx, { type: 'doughnut', data: { datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] }, options: { plugins: { legend: { display: false } }, cutout: '70%' } });
+            } catch (_) {
+                // noop
+            }
+        }
+
+        function renderCurrentMenuStep() {
+            // Just render the current step without advancing
+            popupHolder.innerHTML = '';
+
+            if (currentStep >= steps.length) {
+                // Menu is completed, show final results
+                appendMsg('Поздравляем! Ваш индивидуальный инвестиционный портфель готов!');
+
+                // Show portfolio 1 diagram using data logic from main.js
+                const canvas = document.createElement('canvas');
+                canvas.id = 'result-chart';
+                canvas.style.maxWidth = '300px';
+                popupHolder.appendChild(canvas);
+                renderPortfolio1Chart('result-chart');
+
+                const info = document.createElement('p');
+                info.textContent = 'Хотите узнать точное время покупки этих акций';
+                popupHolder.appendChild(info);
+
+                const btnRow = document.createElement('div');
+                btnRow.id = 'primary-action-row';
+                btnRow.style.cssText = 'display:flex;justify-content:center;gap:12px;margin-top:8px;';
+                /* const reportsBtn=document.createElement('button');
+                reportsBtn.textContent='Получить отчёты по акциям';
+                reportsBtn.className='action-btn'; */
+                const bestBtn = document.createElement('button');
+                bestBtn.textContent = 'Лучшие время для покупок';
+                bestBtn.className = 'action-btn green';
+                bestBtn.onclick = triggerPaywall;
+                /* reportsBtn.onclick=()=>showReportOptions(btnRow, canvas, info);
+                btnRow.appendChild(reportsBtn); */
+                btnRow.appendChild(bestBtn);
+                popupHolder.appendChild(btnRow);
+                return;
+            }
+
+            const step = steps[currentStep];
+            if (step.render) {
+                popupHolder.appendChild(step.render());
+            } else {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'popup-step';
+                const h = document.createElement('h4');
+                h.textContent = step.title;
+                wrapper.appendChild(h);
+                const btnRow = document.createElement('div');
+                btnRow.className = 'btn-row';
+                step.options.forEach(opt => {
+                    const b = document.createElement('button');
+                    b.textContent = opt;
+                    b.onclick = () => nextStep(opt);
+                    btnRow.appendChild(b);
+                });
+                wrapper.appendChild(btnRow);
+                popupHolder.appendChild(wrapper);
+            }
+        }
+
+        function nextStep(choice) {
+            if (choice) answers[steps[currentStep].id] = choice;
+            currentStep++;
+
+            // Save current menu state
+            InteractiveMenuManager.saveCurrentMenuState();
+
+            // Render the next step
+            renderCurrentMenuStep();
+
+            if (currentStep >= steps.length) {
+                // Mark menu as completed for all chats
+                const state = InteractiveMenuManager.getMenuState(currentChat);
+                state.isCompleted = true;
+                InteractiveMenuManager.saveMenuState(currentChat);
+            }
+        }
+
+        /* function showReportOptions(row, chartCanvas, infoText){
+            row.remove(); if(chartCanvas) chartCanvas.remove(); if(infoText) infoText.remove();
+            const repRow=document.createElement('div'); repRow.id='reports-row'; repRow.style.cssText='display:flex;justify-content:center;gap:12px;margin-top:8px;';
+            const opts=['Финансовые отчёты за последний год','Финансовые отчёты за последние 3 года','Финансовые отчёты за последние 5 лет'];
+            opts.forEach(opt=>{
+                const b=document.createElement('button'); b.textContent=opt; b.className='action-btn'; b.onclick=()=>reportsDownloaded(repRow); repRow.appendChild(b);
+            });
+            popupHolder.appendChild(repRow);
+        }
+        
+        function reportsDownloaded(repRow){
+            repRow.remove();
+            appendMsg('Финансовые отчёты успешно загружены','bot');
+            const bottom=document.createElement('div'); bottom.id='bottom-row'; bottom.style.cssText='display:flex;justify-content:center;gap:12px;margin-top:8px;';
+            const impBtn=document.createElement('button'); impBtn.textContent='Получить важную информацию'; impBtn.className='action-btn green'; impBtn.onclick=triggerPaywall;
+            const selfBtn=document.createElement('button'); selfBtn.textContent='Изучить самостоятельно'; selfBtn.className='action-btn'; selfBtn.onclick=()=>{
+                bottom.remove();
+                const basics=document.createElement('button'); basics.textContent='Основы инвестиций'; basics.className='action-btn'; basics.onclick=triggerPaywall; popupHolder.appendChild(basics);
+            };
+            bottom.appendChild(impBtn); bottom.appendChild(selfBtn);
+            popupHolder.appendChild(bottom);
+        } */
+
+        // Initialize first step once page loads.
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Chat page loading...');
+
+            // Force Environment initialization to ensure model and key are loaded
+            if (window.Environment) {
+                window.Environment.init();
+            }
+
+            // Clean old conversation keys from previous versions
+            ConversationManager.cleanOldConversationKeys();
+
+            // Initialize user-specific chat history
+            ChatHistoryManager.initializeUserChats();
+
+            // Load all existing chat folders
+            folderList.innerHTML = ''; // Clear existing folders
+            chats.forEach((chat, index) => {
+                createFolderItem(chat.name, index);
+            });
+
+            // Highlight the active chat folder
+            const activeFolderItem = folderList.querySelector(`[data-index="${currentChat}"]`);
+            if (activeFolderItem) {
+                activeFolderItem.classList.add('active');
+            }
+
+            // Load current chat messages
+            renderMessages();
+
+            // Initialize interactive menu for current chat
+            InteractiveMenuManager.loadMenuForChat(currentChat);
+
+            // If this is a fresh chat (no messages), add welcome messages
+            if (chats[currentChat].messages.length === 0) {
+                appendMsg('Добро пожаловать! Я помогу вам создать инвестиционный портфель');
+                appendMsg('(Вы можете использовать интерактивное меню или строку чата)');
+            }
+
+            // Show interactive menu if it should be available for this chat
+            if (InteractiveMenuManager.shouldShowMenu(currentChat)) {
+                renderCurrentMenuStep();
+            }
+
+            console.log(`Loaded ${chats.length} chats for user: ${ChatHistoryManager.getUserId()}`);
+        });
+
+        /* ---------------------------- Send message --------------------------- */
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+        // intercept blur icon paywall trigger - because icons exist in main page, but ensure if chat page any element with class 'blur-toggle-chat'
+        document.addEventListener('click', e => {
+            if (e.target.closest('.blur-toggle')) { triggerPaywall(); }
+        });
+
+        // Message limit tracking for registered users
+        class MessageLimitManager {
+            static getDailyMessageKey() {
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                const userId = AuthManager.getUserEmail() || 'guest';
+                return `messageCount_${userId}_${today}`;
+            }
+
+            static getTodaysMessageCount() {
+                const key = this.getDailyMessageKey();
+                return parseInt(localStorage.getItem(key) || '0');
+            }
+
+            static incrementMessageCount() {
+                const key = this.getDailyMessageKey();
+                const currentCount = this.getTodaysMessageCount();
+                localStorage.setItem(key, (currentCount + 1).toString());
+                return currentCount + 1;
+            }
+
+            static hasReachedLimit() {
+                return this.getTodaysMessageCount() >= 10;
+            }
+
+            static getRemainingMessages() {
+                return Math.max(0, 10 - this.getTodaysMessageCount());
+            }
+        }
+
+        // Conversation history management
+        class ConversationManager {
+            static cleanOldConversationKeys() {
+                const userId = AuthManager.getUserEmail() || 'guest';
+                const keysToRemove = [];
+
+                // Find old conversation keys that don't follow the new pattern
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('conversation_') && !key.includes(`_${userId}_`)) {
+                        keysToRemove.push(key);
+                    }
+                }
+
+                // Also check for old format keys like 'conversation_user' without chat index
+                const oldKey = `conversation_${userId}`;
+                if (localStorage.getItem(oldKey)) {
+                    keysToRemove.push(oldKey);
+                }
+
+                // Remove old keys
+                keysToRemove.forEach(key => {
+                    console.log(`Removing old conversation key: ${key}`);
+                    localStorage.removeItem(key);
+                });
+
+                if (keysToRemove.length > 0) {
+                    console.log(`Cleaned ${keysToRemove.length} old conversation keys`);
+                }
+            }
+            static getConversationKey(chatIndex = currentChat) {
+                const idx = (typeof chatIndex === 'number' ? chatIndex : 0);
+                const userId = AuthManager.getUserEmail() || 'guest';
+                return `conversation_${userId}_${idx}`;
+            }
+
+            static getConversationHistory(chatIndex = currentChat) {
+                const key = this.getConversationKey(chatIndex);
+                const history = localStorage.getItem(key);
+                return history ? JSON.parse(history) : [];
+            }
+
+            static addToHistory(role, message, chatIndex = currentChat) {
+                const history = this.getConversationHistory(chatIndex);
+                history.push({
+                    role: role,
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+
+                const key = this.getConversationKey(chatIndex);
+                localStorage.setItem(key, JSON.stringify(history));
+            }
+
+            static clearHistory(chatIndex = currentChat) {
+                const key = this.getConversationKey(chatIndex);
+                localStorage.removeItem(key);
+            }
+        }
+
+        // AI Response handler
+        async function getAIResponse(userMessage, chatIndexAtSend) {
+            try {
+                // Show typing indicator in browser console or status (not in chat)
+                console.log('🤖 AI is typing...');
+
+                // Get conversation history for context (without current message)
+                const conversationKey = ConversationManager.getConversationKey(chatIndexAtSend);
+                const conversationHistory = ConversationManager.getConversationHistory(chatIndexAtSend);
+                console.log(`Using conversation key: ${conversationKey}, history length: ${conversationHistory.length}`);
+
+                /* // Build market/portfolio context from API to enrich the prompt (disabled by request)
+                const context = await buildAIContext(userMessage).catch(()=> '');
+                const enrichedMessage = context ? `${context}\n\nВопрос: ${userMessage}` : userMessage; */
+
+                // Check if AI is configured
+                if (!window.GeminiAI || !window.GeminiAI.isConfigured()) {
+                    // Fallback: provide simple response without clarifying questions
+                    const fb = getFallbackResponse(userMessage);
+                    // Persist conversation history for this chat
+                    ConversationManager.addToHistory('user', userMessage, chatIndexAtSend);
+                    ConversationManager.addToHistory('bot', fb, chatIndexAtSend);
+                    appendMsgToChat('🤖: ' + fb, 'bot', chatIndexAtSend);
+                    return;
+                }
+
+                // Get AI response (send full conversation history as-is)
+                const aiResponse = await window.GeminiAI.getResponse(userMessage, conversationHistory);
+
+                // Persist conversation history for this chat
+                ConversationManager.addToHistory('user', userMessage, chatIndexAtSend);
+                ConversationManager.addToHistory('bot', aiResponse, chatIndexAtSend);
+
+                // Show AI response directly (no typing indicator removal needed)
+                appendMsgToChat('🤖: ' + aiResponse, 'bot', chatIndexAtSend);
+
+            } catch (error) {
+                console.error('AI Response Error:', error);
+
+                // Show fallback response (no summaries)
+                const fb = getFallbackResponse(userMessage);
+                ConversationManager.addToHistory('user', userMessage, chatIndexAtSend);
+                ConversationManager.addToHistory('bot', fb, chatIndexAtSend);
+                appendMsgToChat('🤖: ' + fb, 'bot', chatIndexAtSend);
+            }
+        }
+
+        /* // Build compact context for AI from backend APIs (disabled by request)
+        async function buildAIContext(userMessage) {
+            // commented out
+        }
+        */
+
+        /* // API-based fallback summary was disabled per requirements */
+
+        // Fallback responses when AI is not available
+        function getFallbackResponse(userMessage) {
+            // Static, no-questions fallback
+            return 'AI временно недоступен. Попробуйте позже — данные подтягиваются из API автоматически.';
+        }
+
+        function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            const chatIndexAtSend = currentChat;
+
+            // Check if user is logged in
+            if (!AuthManager.isLoggedIn()) {
+                // Redirect to main page with login modal
+                window.location.href = 'index.html?showLogin=true';
+                return;
+            }
+
+            // Check if user is admin (admins bypass all limits)
+            const isAdmin = AuthManager.isAdmin();
+
+            // For non-admin registered users, check message limit
+            if (!isAdmin && AuthManager.isLoggedIn()) {
+                if (MessageLimitManager.hasReachedLimit()) {
+                    triggerPaywall();
+                    return;
+                }
+
+                // Increment message count for registered users
+                MessageLimitManager.incrementMessageCount();
+
+                // Show remaining messages if close to limit
+                const remaining = MessageLimitManager.getRemainingMessages();
+                if (remaining <= 3 && remaining > 0) {
+                    setTimeout(() => {
+                        appendMsgToChat(`Осталось ${remaining} сообщений на сегодня`, 'bot', chatIndexAtSend);
+                    }, 1000);
+                }
+            }
+
+            // For admin users or users with premium subscription, allow unlimited access
+            if (!isAdmin && !AuthManager.canAccessFeature('premium')) {
+                // This check is for premium features beyond basic message sending
+                // Basic message sending is handled by the message limit above
+            }
+
+            appendMsgToChat(text, 'user', chatIndexAtSend);
+            userInput.value = '';
+
+            // Get AI response using Gemini
+            getAIResponse(text, chatIndexAtSend);
+        }
+
+        // Custom scrollbar functionality
+        class CustomScrollbar {
+            constructor() {
+                this.messagesContainer = document.getElementById('messages');
+                this.scrollbarTrack = document.querySelector('.custom-scrollbar');
+                this.scrollbarThumb = document.querySelector('.custom-scrollbar-thumb');
+                this.isDragging = false;
+                this.startY = 0;
+                this.startScrollTop = 0;
+
+                this.init();
+            }
+
+            init() {
+                // Update scrollbar on scroll
+                this.messagesContainer.addEventListener('scroll', () => this.updateScrollbar());
+
+                // Handle thumb dragging
+                this.scrollbarThumb.addEventListener('mousedown', (e) => this.startDrag(e));
+                document.addEventListener('mousemove', (e) => this.onDrag(e));
+                document.addEventListener('mouseup', () => this.stopDrag());
+
+                // Handle track clicks
+                this.scrollbarTrack.addEventListener('click', (e) => this.onTrackClick(e));
+
+                // Handle mouse wheel scrolling on entire screen
+                document.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+
+                // Initial update
+                this.updateScrollbar();
+
+                // Update on window resize
+                window.addEventListener('resize', () => this.updateScrollbar());
+
+                // Update when new messages are added
+                const observer = new MutationObserver(() => this.updateScrollbar());
+                observer.observe(this.messagesContainer, { childList: true, subtree: true });
+            }
+
+            updateScrollbar() {
+                const container = this.messagesContainer;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+                const scrollTop = container.scrollTop;
+
+                // Hide scrollbar if content doesn't overflow
+                if (scrollHeight <= clientHeight) {
+                    this.scrollbarTrack.style.display = 'none';
+                    return;
+                } else {
+                    this.scrollbarTrack.style.display = 'block';
+                }
+
+                // Calculate thumb size and position
+                const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * window.innerHeight);
+                const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (window.innerHeight - thumbHeight);
+
+                this.scrollbarThumb.style.height = thumbHeight + 'px';
+                this.scrollbarThumb.style.top = thumbTop + 'px';
+            }
+
+            startDrag(e) {
+                this.isDragging = true;
+                this.startY = e.clientY;
+                this.startScrollTop = this.messagesContainer.scrollTop;
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            }
+
+            onDrag(e) {
+                if (!this.isDragging) return;
+
+                const deltaY = e.clientY - this.startY;
+                const container = this.messagesContainer;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+                const maxScroll = scrollHeight - clientHeight;
+                const scrollRatio = deltaY / (window.innerHeight - parseInt(this.scrollbarThumb.style.height));
+
+                container.scrollTop = this.startScrollTop + (scrollRatio * maxScroll);
+                e.preventDefault();
+            }
+
+            stopDrag() {
+                this.isDragging = false;
+                document.body.style.userSelect = '';
+            }
+
+            onTrackClick(e) {
+                if (e.target === this.scrollbarThumb) return;
+
+                const trackRect = this.scrollbarTrack.getBoundingClientRect();
+                const clickY = e.clientY - trackRect.top;
+                const thumbHeight = parseInt(this.scrollbarThumb.style.height);
+                const container = this.messagesContainer;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+                const maxScroll = scrollHeight - clientHeight;
+
+                const scrollRatio = (clickY - thumbHeight / 2) / (window.innerHeight - thumbHeight);
+                container.scrollTop = scrollRatio * maxScroll;
+            }
+
+            onWheel(e) {
+                const container = this.messagesContainer;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+
+                // Only handle wheel events if chat content overflows
+                if (scrollHeight <= clientHeight) return;
+
+                // Check if we're not in an input field or other scrollable element
+                const target = e.target;
+                const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+                const isScrollableElement = target.scrollHeight > target.clientHeight && target !== document.body;
+
+                // Don't interfere with input fields or other scrollable elements
+                if (isInputField || (isScrollableElement && target !== this.messagesContainer)) {
+                    return;
+                }
+
+                // Prevent default scrolling behavior
+                e.preventDefault();
+
+                // Use standard website scrolling behavior
+                let scrollAmount;
+
+                // Handle different wheel delta modes for natural scrolling
+                if (e.deltaMode === 0) {
+                    // Pixel mode (most common) - use direct pixel values
+                    scrollAmount = e.deltaY;
+                } else if (e.deltaMode === 1) {
+                    // Line mode - convert to pixels (standard line height ~16px)
+                    scrollAmount = e.deltaY * 16;
+                } else {
+                    // Page mode - scroll by page height
+                    scrollAmount = e.deltaY * clientHeight;
+                }
+
+                // Apply scroll directly like regular websites
+                container.scrollTop += scrollAmount;
+
+                // Ensure we don't scroll beyond bounds
+                const maxScroll = scrollHeight - clientHeight;
+                if (container.scrollTop < 0) container.scrollTop = 0;
+                if (container.scrollTop > maxScroll) container.scrollTop = maxScroll;
+            }
+        }
+
+        // Initialize custom scrollbar when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new CustomScrollbar();
+        });
+
+    </script>
+</body>
+
+</html>

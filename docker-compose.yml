@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      APP_ENV: "${APP_ENV}"
+      API_SECRET_KEY: "${API_SECRET_KEY}"
+      API_KEYS: "${API_KEYS}"
+      CORS_ORIGINS: "${CORS_ORIGINS}"
+      ADMIN_API_KEYS: "${ADMIN_API_KEYS}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./backend/logs:/app/backend/logs
+      - ./backend/charts:/app/backend/charts:ro
+      - ./backend/data/csv_backup:/app/backend/data/csv_backup:ro
+      - ./frontend:/app/frontend
+    restart: unless-stopped
+
+

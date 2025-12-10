@@ -1,0 +1,4 @@
+date,symbol,action,price,shares,notional,realized_pnl
+2025-08-11,OZON,sell,4424.0,6,26854.83,8391.43
+2025-08-11,RTGZ,sell,52800.0,0,22460.51,0.0
+2025-08-11,SBER,sell,317.82,70,22147.45,3814.54

@@ -1,0 +1,5 @@
+id,run_timestamp,data_period_months,data_interval,symbols_collected,symbols_with_indicators,total_data_points,duration_seconds,status,error_count,notes
+1,2025-08-12 09:18:23,36,1d,17,17,13171,394.72,success,0,Automated storage from pipeline run
+2,2025-08-12 09:31:22,36,1d,17,17,13171,168.36,success,0,Automated storage from pipeline run
+3,2025-08-12 09:54:49,36,1d,17,17,13171,171.86,success,0,Automated storage from pipeline run
+4,2025-08-15 01:18:51,180,1d,17,17,40255,582.59,success,0,Automated storage from pipeline run

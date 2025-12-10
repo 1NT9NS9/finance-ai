@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Test - Gemini Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #111;
+            color: #fff;
+        }
+
+        .container {
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #2d5a2d;
+        }
+
+        .status.error {
+            background: #5a2d2d;
+        }
+
+        .status.warning {
+            background: #5a5a2d;
+        }
+
+        .status.info {
+            background: #2d2d5a;
+        }
+
+        input,
+        textarea,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        button {
+            background: #28a745;
+            cursor: pointer;
+            width: auto;
+            padding: 10px 20px;
+        }
+
+        button:hover {
+            background: #34ce57;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        #response {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            min-height: 100px;
+            border: 1px solid #555;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .test-buttons button {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        pre {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🤖 AI Integration Test</h1>
+    <p>Тестирование интеграции с Gemini AI для инвестиционного сайта</p>
+
+    <!-- API Key Configuration -->
+    <div class="container">
+        <h2>🔑 Backend Access Configuration</h2>
+        <p>Ensure your real Gemini API Key is in the backend <code>.env</code> file.</p>
+        <input type="password" id="apiKeyInput" placeholder="Backend Access Key (e.g., fdml_demo_key_12345)">
+        <button onclick="setApiKey()">Set Access Key</button>
+        <div id="apiStatus" class="status info">
+            Status: Unknown
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="container">
+        <h2>📊 Статус системы</h2>
+        <button onclick="checkStatus()">Проверить статус</button>
+        <div id="systemStatus" class="status info">
+            Нажмите "Проверить статус" для диагностики
+        </div>
+    </div>
+
+    <!-- Quick Tests -->
+    <div class="container">
+        <h2>⚡ Быстрые тесты</h2>
+        <div class="test-buttons">
+            <button onclick="testBasic()">Базовый тест</button>
+            <button onclick="testInvestment()">Тест инвестиций</button>
+            <button onclick="testMarket()">Тест рынка</button>
+            <button onclick="testFallback()">Тест fallback</button>
+        </div>
+    </div>
+
+    <!-- Custom Message Test -->
+    <div class="container">
+        <h2>💬 Тестирование сообщений</h2>
+        <textarea id="messageInput" rows="3"
+            placeholder="Введите ваше сообщение...">Расскажи про инвестиции в российские акции</textarea>
+        <button onclick="sendTestMessage()" id="sendButton">Отправить сообщение</button>
+        <h3>Ответ AI:</h3>
+        <div id="response">Здесь появится ответ...</div>
+    </div>
+
+    <!-- Debug Info -->
+    <div class="container">
+        <h2>🔍 Отладочная информация</h2>
+        <button onclick="showDebugInfo()">Показать debug</button>
+        <pre id="debugInfo"></pre>
+    </div>
+
+    <!-- Include our scripts -->
+    <script src="environment.js?v=2.5"></script>
+    <script src="config.js?v=2.5"></script>
+    <script src="gemini-api.js?v=2.5"></script>
+
+    <script>
+        let isLoading = false;
+
+        // Set API key
+        function setApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                showStatus('apiStatus', 'Введите API ключ', 'error');
+                return;
+            }
+
+            // 🌍 Set API key in Environment (will automatically update all modules)
+            window.Environment.set('GEMINI_API_KEY', apiKey);
+
+            showStatus('apiStatus', 'API ключ установлен успешно! Все модули обновлены.', 'success');
+            checkStatus();
+        }
+
+        // Check system status
+        async function checkStatus() {
+            showStatus('systemStatus', 'Проверка...', 'info');
+
+            try {
+                // Check configuration
+                const isConfigured = window.GeminiAI.isConfigured();
+                let statusText = `🔧 Конфигурация: ${isConfigured ? '✅' : '❌'}\n`;
+
+                // Check network connectivity
+                statusText += `🌐 Соединение: Проверяется...\n`;
+
+                if (isConfigured) {
+                    // Test API connectivity
+                    const healthCheck = await window.GeminiAI.healthCheck();
+                    statusText += `🤖 AI Сервис: ${healthCheck.status === 'healthy' ? '✅' : '❌'}\n`;
+                    statusText += `📝 Тест ответ: ${healthCheck.response || healthCheck.error}\n`;
+
+                    showStatus('systemStatus', statusText, healthCheck.status === 'healthy' ? 'success' : 'error');
+                } else {
+                    statusText += `🤖 AI Сервис: ❌ (API ключ не настроен)\n`;
+                    showStatus('systemStatus', statusText, 'warning');
+                }
+
+            } catch (error) {
+                showStatus('systemStatus', `❌ Ошибка: ${error.message}`, 'error');
+            }
+        }
+
+        // Test functions
+        async function testBasic() {
+            await sendTestMessage('Привет, это тест');
+        }
+
+        async function testInvestment() {
+            await sendTestMessage('Какие российские акции посоветуешь для долгосрочных инвестиций?');
+        }
+
+        async function testMarket() {
+            await sendTestMessage('Как сейчас дела у Сбербанка на фондовом рынке?');
+        }
+
+        async function testFallback() {
+            // Temporarily break the API to test fallback
+            const originalKey = window.GeminiAI.apiKey;
+            window.GeminiAI.setApiKey('invalid_key');
+
+            await sendTestMessage('Тест fallback ответов');
+
+            // Restore original key
+            window.GeminiAI.setApiKey(originalKey);
+        }
+
+        // Send test message
+        async function sendTestMessage(customMessage = null) {
+            if (isLoading) return;
+
+            const message = customMessage || document.getElementById('messageInput').value.trim();
+            if (!message) {
+                showResponse('Введите сообщение для отправки');
+                return;
+            }
+
+            isLoading = true;
+            const sendButton = document.getElementById('sendButton');
+            const originalText = sendButton.textContent;
+            sendButton.textContent = 'Отправляется...';
+            sendButton.disabled = true;
+
+            showResponse('🤖 печатает...');
+
+            try {
+                const startTime = Date.now();
+                const response = await window.GeminiAI.getResponse(message);
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+
+                showResponse(`${response}\n\n⏱️ Время ответа: ${duration}ms`);
+
+            } catch (error) {
+                showResponse(`❌ Ошибка: ${error.message}`);
+            } finally {
+                isLoading = false;
+                sendButton.textContent = originalText;
+                sendButton.disabled = false;
+            }
+        }
+
+        // Show debug information
+        function showDebugInfo() {
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                config: {
+                    apiConfigured: window.GeminiAI.isConfigured(),
+                    baseURL: window.GeminiAI.baseURL,
+                    timeout: window.GeminiAI.timeout,
+                    maxRetries: window.GeminiAI.maxRetries
+                },
+                browser: {
+                    userAgent: navigator.userAgent,
+                    language: navigator.language,
+                    onLine: navigator.onLine
+                },
+                localStorage: {
+                    keys: Object.keys(localStorage),
+                    size: JSON.stringify(localStorage).length
+                }
+            };
+
+            document.getElementById('debugInfo').textContent = JSON.stringify(debugInfo, null, 2);
+        }
+
+        // Utility functions
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        function showResponse(text) {
+            document.getElementById('response').textContent = text;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('AI Test Page loaded');
+            // Force re-initialization to ensure all settings (including Model) are applied
+            if (window.Environment) {
+                window.Environment.init();
+            }
+
+            checkStatus();
+
+            // Auto-fill API key if available in environment
+            const envKey = window.Environment?.GEMINI_API_KEY;
+            if (envKey && envKey !== 'YOUR_GEMINI_API_KEY_HERE') {
+                document.getElementById('apiKeyInput').value = envKey;
+                showStatus('apiStatus', 'API ключ загружен из конфигурации', 'success');
+            }
+        });
+
+        // Allow Enter key to send messages
+        document.getElementById('messageInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendTestMessage();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg-info/
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage*
+
+# Virtual environments and environment files
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+ENV/
+pip-wheel-metadata/
+node_modules/
+
+# Logs
+*.log
+
+# Project heavy/local artifacts (do not upload to server repo)
+backend/venv/
+backend/data/financial_data.db
+backend/logs/
+backend/charts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+

@@ -1,0 +1,4 @@
+date,symbol,action,price,shares,notional,realized_pnl
+2025-08-08,KRSB,sell,19.9,932,18545.74,3054.27
+2025-08-11,MRKV,sell,0.13,202768,26359.79,10535.48
+2025-08-08,T,sell,3367.8,4,12894.97,1046.97

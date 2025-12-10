@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>График актива</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                  <script src="auth-utils.js"></script>
+    <script src="modules.js"></script>
+    <style>
+        body { background-color:#111; color:#fff; display:flex; flex-direction:column; align-items:center; padding:24px; }
+        #asset-title { font-size:1.4rem; margin-bottom:24px; }
+        #back-btn { margin-bottom:16px; padding:8px 16px; background-color:#333; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+        #back-btn:hover { background-color:#555; }
+        canvas { max-width:600px; width:100%; max-height:400px; }
+    </style>
+</head>
+<body>
+    <button id="back-btn" onclick="window.close()">Вернуться</button>
+    <h2 id="asset-title"></h2>
+    <canvas id="asset-chart"></canvas>
+
+    <script>
+    const params = new URLSearchParams(window.location.search);
+    const asset = params.get('asset') || 'unknown';
+    const titleMap = { gold:'Доходность золота', sber:'Ставка вклада Сбербанка', moex:'Доходность индекса МосБиржи' };
+    const ctx = document.getElementById('asset-chart').getContext('2d');
+    document.getElementById('asset-title').textContent = titleMap[asset] || 'Актив';
+
+    // Dummy data for demonstration
+    const labels = Array.from({length:12},(_,i)=>`М${i+1}`);
+    const data = labels.map(()=>Math.random()*10+5);
+
+    new Chart(ctx, {
+        type:'line',
+        data:{ labels, datasets:[{ label:titleMap[asset], data, borderColor:'#4d96ff', backgroundColor:'rgba(77,150,255,0.3)', tension:0.3 }] },
+        options:{ responsive:true, scales:{ y:{ ticks:{ color:'#fff' }, grid:{ color:'#333' } }, x:{ ticks:{ color:'#fff' }, grid:{ color:'#333' } } }, plugins:{ legend:{ labels:{ color:'#fff' } } } }
+    });
+    </script>
+</body>
+</html> 

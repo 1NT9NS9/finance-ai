@@ -1,0 +1,4 @@
+symbol,sector,total_buys,total_sells,ending_cash_plus_position_value,total_buy_notional,total_sell_proceeds,realized_pnl,unrealized_pnl,total_pnl,ending_shares,ending_avg_cost,last_price
+OZON,Information technology,136,213,3015675.79,4477427.0,3841909.5,1178642.27,839408.3,2018050.57,600.0,3024.99,4424.0
+RTGZ,Rosneft Oil Company,121,0,4721006.79,2669600.0,0.0,0.0,1923733.04,1923733.04,87.0,30688.13,52800.0
+SBER,Finance,130,227,2371175.4,4588405.49,3767109.4,994338.73,376169.81,1370508.54,6899.0,263.29,317.82

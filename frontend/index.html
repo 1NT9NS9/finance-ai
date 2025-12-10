@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Russian Stock Market Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Zoom/Pan plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+    <!-- Chart.js Financial (candlestick) plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3"></script>
+    <script src="environment.js?v=2.5"></script>
+    <script src="auth-utils.js?v=2.5"></script>
+    <script src="modules.js?v=2.5"></script>
+    <script src="config.js?v=2.5"></script>
+    <script src="gemini-api.js?v=2.5"></script>
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"
+        crossorigin="anonymous"></script>
+    <style>
+        /* Chat-style layout for main page */
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            background-color: #131314;
+            color: #e8eaed;
+            overflow: hidden;
+        }
+
+        #main-chat-wrapper {
+            display: flex;
+            height: 100vh;
+            background-color: #131314;
+        }
+
+        /* Sidebar */
+        #main-sidebar {
+            width: 260px;
+            border-right: 1px solid #3c4043;
+            display: flex;
+            flex-direction: column;
+            background-color: #1f1f1f;
+        }
+
+        #main-sidebar h3 {
+            text-align: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+            margin: 0;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .sidebar-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-item:hover {
+            background-color: #2a2a2a;
+        }
+
+        .sidebar-item.active {
+            background-color: #8b5cf6;
+        }
+
+        .sidebar-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        /* Top rates - now displayed as buttons in main area */
+        .top-rates-main {
+            display: flex;
+            gap: 16px;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .top-rate-button {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .top-rate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+
+        /* Main content area */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 0 16px 16px;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #content-messages {
+            flex: 1;
+            overflow-y: scroll;
+            margin-bottom: 12px;
+            width: 100%;
+            max-width: 800px;
+            padding: 12px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            position: relative;
+            height: 100%;
+        }
+
+        #content-messages::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Chat input */
+        #main-input {
+            display: flex;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 12px;
+            position: relative;
+        }
+
+        #main-input input {
+            flex: 1;
+            padding: 16px 60px 16px 20px;
+            height: 24px;
+            border-radius: 24px;
+            border: 2px solid #8b5cf6;
+            background-color: #6b46c1;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        #main-input input:focus {
+            border-color: #a855f7;
+            background-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        #main-input input::placeholder {
+            color: #e0e7ff;
+            opacity: 0.7;
+        }
+
+        #main-input button {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px;
+            background-color: #a855f7;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        #main-input button:hover {
+            background-color: #9333ea;
+        }
+
+        /* Portfolio button styling */
+        .portfolio-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            color: white;
+            text-decoration: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .portfolio-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+            background: linear-gradient(135deg, #15803d, #16a34a);
+        }
+
+        .portfolio-button i {
+            font-size: 18px;
+        }
+
+        /* Quote bar styling */
+        .quote-bar-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1f1f1f;
+            padding: 12px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .quote-text {
+            font-style: italic;
+            color: #e3e3e3;
+            flex: 1;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .news-icon {
+            color: #8b5cf6;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .admin-badge {
+            background: linear-gradient(135deg, #4ade80, #16a34a);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-badge {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .guest-badge {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .admin-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(74, 222, 128, 0.3);
+        }
+
+        .user-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+        }
+
+        .guest-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
+        }
+
+        .badge-hidden {
+            visibility: hidden;
+        }
+
+        /* Registration menu to the right of quote */
+        .registration-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            padding: 12px;
+            min-width: 150px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .registration-menu.show {
+            display: block;
+        }
+
+        .registration-menu h4 {
+            margin: 0 0 8px 0;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .registration-menu .role-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            margin: 4px 0;
+            width: 100%;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .registration-menu .role-button:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .quote-bar-main {
+            position: relative;
+        }
+
+        /* Message styles */
+        .content-message {
+            margin: 20px 0;
+            background-color: transparent;
+            color: #e3e3e3;
+            text-align: center;
+            padding: 0;
+            border: none;
+            max-width: 100%;
+            line-height: 1.6;
+        }
+
+        .chart-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
+
+        .chart-and-list-container {
+            background: linear-gradient(135deg, #2d2d2d 0%, #252525 50%, #1f1f1f 100%);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            border: 1px solid #3a3a3a;
+            width: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-and-list-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            border-radius: 12px;
+        }
+
+        .chart-and-list-container {
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .chart-and-list-container:hover {
+            transform: scale(1.05);
+        }
+
+        .chart-container {
+            background: transparent;
+            border: none;
+            padding: 0;
+            box-shadow: none;
+            width: 100%;
+            height: fit-content;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .chart-container:hover {
+            transform: scale(1.1);
+        }
+
+        .chart-container.rotating canvas {
+            animation: rotate 1s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .chart-container canvas {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+
+        .stock-list-in-message {
+            width: 100%;
+            height: fit-content;
+            background-color: transparent;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+            border: none;
+            position: relative;
+        }
+
+        .stock-list-in-message h4 {
+            display: none;
+        }
+
+        .stock-list-in-message ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 180px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #8b5cf6 #2a2a2a;
+        }
+
+        .stock-list-in-message ul::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .stock-list-in-message ul::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 3px;
+        }
+
+        .stock-list-in-message ul::-webkit-scrollbar-thumb {
+            background: #8b5cf6;
+            border-radius: 3px;
+        }
+
+        .stock-list-in-message ul::-webkit-scrollbar-thumb:hover {
+            background: #a855f7;
+        }
+
+        .stock-list-in-message li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: block;
+            /* Changed from flex to block for vertical expansion */
+        }
+
+        .stock-list-in-message li:last-child {
+            border-bottom: none;
+        }
+
+        /* Blur effect for stock lists */
+        .blur {
+            filter: blur(5px);
+            transition: filter 0.3s ease;
+        }
+
+        .blur-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(139, 92, 246, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #8b5cf6;
+            transition: all 0.3s ease;
+        }
+
+        .blur-toggle:hover {
+            background: rgba(139, 92, 246, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* Stock item expansion */
+        .stock-item {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 4px 0;
+        }
+
+        .stock-item:hover {
+            background-color: rgba(139, 92, 246, 0.1);
+        }
+
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .stock-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+            background-color: transparent;
+            margin-top: 4px;
+            border-radius: 0;
+            border-left: none;
+            opacity: 0;
+            padding: 0;
+        }
+
+        .stock-details.expanded {
+            max-height: 200px;
+            padding: 8px 0;
+            opacity: 1;
+        }
+
+        .stock-details p {
+            margin: 2px 0;
+            font-size: 11px;
+            color: #888;
+            padding-left: 16px;
+        }
+
+        .stock-details strong {
+            color: #ccc;
+        }
+
+        /* Custom scrollbar */
+        .main-custom-scrollbar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 6px;
+            height: 100vh;
+            background: #1a1a1a;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .main-custom-scrollbar-thumb {
+            position: absolute;
+            right: 0;
+            width: 6px;
+            background: #404040;
+            border-radius: 3px;
+            cursor: pointer;
+            pointer-events: all;
+            transition: background-color 0.2s ease;
+            min-height: 20px;
+        }
+
+        .main-custom-scrollbar-thumb:hover {
+            background: #555555;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #main-sidebar {
+                width: 200px;
+            }
+
+            .top-rates-main {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .top-rate-button {
+                padding: 10px 20px;
+                font-size: 13px;
+            }
+
+            #content-messages {
+                max-width: 100%;
+                padding: 8px;
+            }
+
+            #main-input {
+                max-width: 100%;
+                padding: 8px;
+            }
+
+            .chart-container {
+                padding: 16px;
+                max-width: 400px;
+            }
+
+            .content-message h2 {
+                font-size: 20px;
+            }
+
+            .content-message h3 {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #main-chat-wrapper {
+                flex-direction: column;
+            }
+
+            #main-sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #3c4043;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+
+            #main-sidebar h3 {
+                display: none;
+            }
+
+            .sidebar-item {
+                min-width: max-content;
+                padding: 8px 12px;
+            }
+
+            #main-content {
+                height: calc(100vh - 60px);
+            }
+
+            #content-messages {
+                padding: 8px;
+            }
+
+            .top-rates-main {
+                flex-direction: column;
+                gap: 8px;
+                margin: 16px 0;
+            }
+
+            .quote-bar-main {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+
+            .chart-container {
+                max-width: 300px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Custom scrollbar for right edge of screen -->
+    <div class="main-custom-scrollbar">
+        <div class="main-custom-scrollbar-thumb"></div>
+    </div>
+
+    <div id="main-chat-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside id="main-sidebar">
+            <h3>Панель управления</h3>
+
+            <!-- Navigation items -->
+            <div class="sidebar-item active" data-section="dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Дашборд</span>
+            </div>
+            <div class="sidebar-item" data-section="news">
+                <i class="fa-solid fa-newspaper"></i>
+                <span>Новости</span>
+            </div>
+            <div class="sidebar-item" data-section="portfolio">
+                <i class="fa-solid fa-briefcase"></i>
+                <span>Портфолио</span>
+            </div>
+            <div class="sidebar-item" data-section="analytics">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Аналитика</span>
+            </div>
+            <div class="sidebar-item" data-section="settings">
+                <i class="fa-solid fa-gear"></i>
+                <span>Настройки</span>
+            </div>
+
+            <!-- Удалена кнопка входа из боковой панели -->
+        </aside>
+
+        <!-- Main Content Area -->
+        <section id="main-content">
+            <div id="content-messages">
+                <!-- Top rate buttons -->
+                <div class="top-rates-main">
+                    <button class="top-rate-button" data-asset="gold">Доходность золота</button>
+                    <button class="top-rate-button" data-asset="sber">Ставка вклада Сбербанка</button>
+                    <button class="top-rate-button" data-asset="moex">Доходность индекса МосБиржи</button>
+                </div>
+
+                <!-- Quote bar -->
+                <div class="quote-bar-main">
+                    <i class="fa-solid fa-newspaper news-icon"></i>
+                    <span class="quote-text">"Лучшее время для инвестиций было вчера. Второе лучшее время –
+                        сегодня."<br />Уоррен Баффетт</span>
+                    <button class="guest-badge badge-hidden" id="user-badge">Войти</button>
+
+                    <!-- Registration menu -->
+                    <div class="registration-menu" id="registration-menu">
+                        <div id="guest-menu">
+                            <h4>Вход в систему</h4>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="role-button" id="open-login" style="background: #8b5cf6; color: white;">
+                                    <i class="fa-solid fa-user"></i> Войти / Регистрация
+                                </button>
+                            </div>
+                        </div>
+                        <div id="logged-menu" style="display: none;">
+                            <h4>Аккаунт</h4>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="role-button" id="subscribe-btn"
+                                    style="background: #8b5cf6; color: white;">
+                                    <i class="fa-solid fa-crown"></i> Подписка
+                                </button>
+                                <button class="role-button" id="logout-btn" style="background: #ef4444; color: white;">
+                                    <i class="fa-solid fa-sign-out-alt"></i> Выйти
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts will be inserted here as messages -->
+                <div id="charts-container"></div>
+            </div>
+
+            <!-- Create Portfolio Button -->
+            <div id="main-input">
+                <a href="chat.html" id="create-portfolio-main" class="portfolio-button">
+                    <i class="fa-solid fa-briefcase"></i>
+                    Создать портфель
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <!-- Paywall overlay -->
+    <div id="paywall" class="paywall-overlay">
+        <div class="paywall-box">
+            <span id="close-paywall" class="close">&times;</span>
+            <h2 style="display:flex;align-items:center;justify-content:center;gap:8px;">Подписка <i
+                    class="fa-solid fa-hourglass-half hourglass-spin"></i></h2>
+            <p>Получите доступ к эксклюзивной информации!</p>
+            <button id="buy-btn" class="btn green"
+                onclick="window.open('subscription.html','_blank')">Подписаться</button>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="paywall-overlay">
+        <div class="paywall-box">
+            <span id="close-login" class="close">&times;</span>
+            <div id="login-tabs">
+                <button class="tab-btn active" data-tab="login">Вход</button>
+                <button class="tab-btn" data-tab="register">Регистрация</button>
+            </div>
+            <div id="login-form" class="tab-content active">
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="Введите email">
+                </div>
+                <div class="form-field">
+                    <label>Пароль</label>
+                    <div class="password-field">
+                        <input type="password" id="login-password" placeholder="Введите пароль">
+                        <button type="button" class="password-toggle" data-target="login-password">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn green" id="submit-login">Войти</button>
+            </div>
+            <div id="register-form" class="tab-content">
+                <div class="form-field">
+                    <label>ФИО</label>
+                    <input type="text" id="register-name" placeholder="Введите полное имя">
+                </div>
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" id="register-email" placeholder="Введите email">
+                </div>
+                <div class="form-field">
+                    <label>Пароль</label>
+                    <div class="password-field">
+                        <input type="password" id="register-password" placeholder="Введите пароль">
+                        <button type="button" class="password-toggle" data-target="register-password">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <div class="password-strength" id="password-strength" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="strength-text">Сила пароля</span>
+                            <span id="strength-score"></span>
+                        </div>
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strength-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn green" id="submit-register">Зарегистрироваться</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes shake {
+            0% {
+                transform: translateX(-3px);
+            }
+
+            100% {
+                transform: translateX(3px);
+            }
+        }
+    </style>
+
+    <script src="main.js"></script>
+    <script>
+        const paywall = document.getElementById('paywall');
+        document.getElementById('close-paywall').onclick = () => paywall.style.display = 'none';
+        // Note: Blur logic is now handled by initBlurHandlers() in main.js with AuthManager
+    </script>
+</body>
+
+</html>

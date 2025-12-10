@@ -1,0 +1,4 @@
+symbol,sector,total_buys,total_sells,ending_cash_plus_position_value,total_buy_notional,total_sell_proceeds,realized_pnl,unrealized_pnl,total_pnl,ending_shares,ending_avg_cost,last_price
+KRSB,Electric Power,138,255,938097.4,3855312.03,3701662.05,326503.46,94877.46,421380.92,28934.0,16.62,19.9
+MRKV,Electric Power,109,248,1400369.72,3455339.53,3886090.31,708890.64,185745.09,894635.73,3573993.0,0.08,0.13
+T,Finance,30,55,600939.49,996036.0,582768.4,83489.82,41932.7,125422.52,160.0,3105.72,3367.8

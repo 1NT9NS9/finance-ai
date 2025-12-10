@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вход</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        body { background-color:#111; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; }
+        .login-card { background-color:#1b1b1b; padding:24px 32px; border-radius:16px; box-shadow:0 0 12px rgba(0,0,0,0.8); text-align:center; }
+        .login-card h2 { margin-bottom:16px; }
+        .login-card button { margin:8px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; background-color:#00a86b; color:#fff; }
+        .login-card button:hover { background-color:#00c57d; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Выберите роль</h2>
+        <button onclick="login('user')">Пользователь</button>
+        <button onclick="adminLogin()">Администратор</button>
+    </div>
+
+    <script>
+    function login(role){
+        localStorage.setItem('role', role);
+        window.location.href = 'index.html';
+    }
+
+    function adminLogin(){
+        const pwd = prompt('Введите пароль администратора');
+        if(pwd === '9*+5-DWvd-465R-dwRT-D@@F'){
+            localStorage.setItem('role', 'admin');
+            localStorage.setItem('userName', 'Admin');
+            localStorage.setItem('userEmail', 'admin@system.local');
+            window.location.href = 'index.html';
+        } else {
+            alert('Неверный пароль');
+        }
+    }
+    </script>
+</body>
+</html> 
