@@ -8,10 +8,15 @@ of the project;
 assistant based on AI;
 - the user gets the opportunity to copy the transactions of profitable portfolios by subscription
 
-<img width="817" height="677" alt="image" src="https://github.com/user-attachments/assets/875ca084-2852-434a-8d8a-13d042bd865d" />
+## Portfolios for investors
+<img width="816" height="673" alt="image" src="https://github.com/user-attachments/assets/1858c85e-6082-4383-b30f-d618ffd8ae16" />
 
-<img width="1333" height="640" alt="image" src="https://github.com/user-attachments/assets/b932d95a-5eab-4e5d-afa5-a36963b1bb06" />
+---
 
+## Financial Assistant
+<img width="1077" height="906" alt="image" src="https://github.com/user-attachments/assets/733b6cd7-9dbd-4893-95cc-152484fed744" />
+
+---
 
 Full-stack system for collecting, analyzing, and serving financial market data (MOEX, Yahoo Finance) with technical indicators and a static JS frontend.
 
