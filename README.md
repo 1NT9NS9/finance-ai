@@ -13,6 +13,11 @@ assistant based on AI;
 
 ---
 
+## Comparison of yields
+<img width="1868" height="897" alt="image" src="https://github.com/user-attachments/assets/df39f178-5a8b-4e0b-9376-9e007cc27ca6" />
+
+---
+
 ## Financial Assistant
 <img width="1077" height="906" alt="image" src="https://github.com/user-attachments/assets/733b6cd7-9dbd-4893-95cc-152484fed744" />
 
